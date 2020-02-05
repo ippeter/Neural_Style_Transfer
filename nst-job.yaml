@@ -1,0 +1,81 @@
+  kind: Job
+apiVersion: batch/v1
+metadata:
+  name: nst-artist
+  namespace: default
+  labels:
+    job-name: nst-artist
+  annotations:
+    description: ''
+spec:
+  parallelism: 3
+  completions: 126
+  backoffLimit: 6
+  template:
+    metadata:
+      name: nst-artist
+      labels:
+        job-name: nst-artist
+    spec:
+      volumes:
+        - name: cce-evs-nst
+          persistentVolumeClaim:
+            claimName: cce-evs-nst
+      containers:
+        - name: container-0
+          image: '100.125.4.57:20202/peterp/nst:1.11'
+          env:
+            - name: INPUT_FOLDER
+              valueFrom:
+                configMapKeyRef:
+                  name: nst-config
+                  key: inputFolder
+            - name: CONTENT_IMAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: nst-config
+                  key: contentImage
+            - name: STYLE_IMAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: nst-config
+                  key: styleImage
+            - name: HIDDEN_LAYER
+              valueFrom:
+                configMapKeyRef:
+                  name: nst-config
+                  key: hiddenLayer
+            - name: OUTPUT_FOLDER
+              valueFrom:
+                configMapKeyRef:
+                  name: nst-config
+                  key: outputFolder
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-pass
+                  key: password
+          resources:
+            limits:
+              cpu: 1500m
+              memory: 5Gi
+            requests:
+              cpu: 1500m
+              memory: 5Gi
+          volumeMounts:
+            - name: cce-evs-nst
+              mountPath: /data
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+      restartPolicy: OnFailure
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      imagePullSecrets:
+        - name: default-secret
+      schedulerName: default-scheduler
+      dnsConfig:
+        options:
+          - name: single-request-reopen
+
