@@ -1,4 +1,6 @@
 import os
+import time
+
 from PIL import Image
 from nst_utils import *
 
@@ -173,7 +175,6 @@ if __name__ == '__main__':
     # Find the next available set of weights checking with Redis
     #
     # Open connection to Redis
-    print(f"DEBUG: connecting to {REDIS_HOST} at {REDIS_PORT} with {REDIS_PASS}")
     r = rd.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASS)
     
     for (w1, w2, w3, w4, w5) in TARGET_WEIGHTS:
@@ -185,17 +186,13 @@ if __name__ == '__main__':
             ('conv5_1', w5)]
         
         image_name = "result_" + HIDDEN_LAYER + "_" + str(w1) + "_" + str(w2) + "_" + str(w3) + "_" + str(w4) + "_" + str(w5) + ".jpg"
-        print(f"DEBUG: Image is {image_name}")
-        print(r.exists(image_name))
         
         if (r.exists(image_name) == 0):
-            print("Does not exist")
             r.set(image_name, 1)
-            r.expires(image_name, 300)
+            r.expire(image_name, 1200)
             print(f"Key {image_name} set")
+            start_time = time.time()
             break
-        else:
-            print("Exists! Continue.")
     
     # Reset the graph
     tf.reset_default_graph()
@@ -215,7 +212,7 @@ if __name__ == '__main__':
     generated_image = generate_noise_image(content_image)
     
     # Load the VGG19 model
-    model = load_vgg_model(INPUT_FOLDER + "/imagenet-vgg-verydeep-19.mat")
+    model = load_vgg_model("imagenet-vgg-verydeep-19.mat")
 
     # Assign the content image to be the input of the VGG model.  
     sess.run(model['input'].assign(content_image))
@@ -268,8 +265,9 @@ if __name__ == '__main__':
 
     # save last generated image
     save_image(OUTPUT_FOLDER + "/" + image_name, generated_image)
-    r.expires(image_name, -1)
-    print(f"Image {image_name} saved.")
+    r.set(image_name, 1)
+    total_time = time.time() - start_time
+    print(f"Image {image_name} processed in {total_time} seconds.")
         
     # Clear everything
     tf.reset_default_graph()
